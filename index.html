@@ -1,0 +1,294 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MTTD / MTTR Calculator (Clock Times)</title>
+  <style>
+    body { font-family: system-ui, Arial, sans-serif; margin: 24px; max-width: 1100px; }
+    h1 { margin: 0 0 6px; }
+    .small { color:#555; font-size: 13px; }
+    .bar { display:flex; gap:10px; flex-wrap: wrap; align-items: center; margin: 12px 0 16px; }
+    button { padding: 10px 12px; border: 1px solid #ccc; border-radius: 10px; background: #fff; cursor: pointer; }
+    button:hover { background: #f7f7f7; }
+    input[type="text"], input[type="number"] { padding: 8px 10px; border: 1px solid #ccc; border-radius: 10px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border-bottom: 1px solid #eee; padding: 10px 8px; vertical-align: top; }
+    th { text-align: left; background: #fafafa; position: sticky; top: 0; z-index: 1; }
+    .cell { display:flex; gap:6px; align-items: center; flex-wrap: wrap; }
+    .cell input { width: 64px; text-align: center; }
+    .summary { display:flex; gap:12px; flex-wrap: wrap; margin-top: 16px; }
+    .card { border: 1px solid #ddd; border-radius: 12px; padding: 12px 14px; min-width: 270px; }
+    code { background:#f6f6f6; padding:2px 6px; border-radius:6px; }
+    label { display:flex; gap:8px; align-items:center; }
+  </style>
+</head>
+<body>
+  <h1>MTTD / MTTR Calculator</h1>
+  <div class="small">
+    Paste real clock times like <code>14:03</code> or <code>14:03:10</code> (also accepts <code>2026-02-18 14:03:10</code>) into any box — it auto-fills H/M/S.<br/>
+    Differences auto-handle crossing midnight (e.g., 23:59 → 00:10 = 11 minutes).
+    Output is always <code>X minutes Y seconds</code>.
+  </div>
+
+  <div class="bar">
+    <button id="addRow">Add incident</button>
+    <button id="calc">Calculate</button>
+    <label class="small">
+      <input type="checkbox" id="midnight" checked />
+      Auto-handle crossing midnight
+    </label>
+  </div>
+
+  <table id="tbl"></table>
+
+  <div class="summary" id="summary"></div>
+
+<script>
+/* ---------- helpers ---------- */
+function clampInt(v) {
+  const n = parseInt(String(v ?? "").trim(), 10);
+  return Number.isFinite(n) && n >= 0 ? n : 0;
+}
+
+// Always: "X minutes Y seconds" (hours rolled into minutes)
+function formatMinSec(totalSeconds) {
+  const s = Math.max(0, Math.round(totalSeconds));
+  const minutes = Math.floor(s / 60);
+  const seconds = s % 60;
+  return `${minutes} minutes ${seconds} seconds`;
+}
+
+/**
+ * Parse pasted clock time into {h,m,s}.
+ * Accepts:
+ *  - "HH:MM"
+ *  - "HH:MM:SS"
+ *  - "YYYY-MM-DD HH:MM(:SS)" or ISO "YYYY-MM-DDTHH:MM(:SS)"
+ */
+function parseClockToHMS(text) {
+  const t = String(text || "").trim();
+  if (!t) return null;
+
+  // Try to extract time part from date-time strings
+  // Find last occurrence of HH:MM(:SS)
+  const m = t.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?\s*$/);
+  if (!m) return null;
+
+  const h = clampInt(m[1]);
+  const mi = clampInt(m[2]);
+  const s = clampInt(m[3] ?? 0);
+
+  if (h > 23 || mi > 59 || s > 59) return null;
+  return { h, m: mi, s };
+}
+
+function hmsToSecondsSinceMidnight(h, m, s) {
+  const hh = clampInt(h), mm = clampInt(m), ss = clampInt(s);
+  return hh * 3600 + mm * 60 + ss;
+}
+
+/**
+ * Compute forward difference between two times-of-day (seconds since midnight).
+ * If end < start and midnightHandling=true, assume end is next day (+24h).
+ */
+function diffClockSeconds(startSec, endSec, midnightHandling) {
+  if (endSec >= startSec) return endSec - startSec;
+  return midnightHandling ? (endSec + 86400) - startSec : 0; // or clamp to 0 if you prefer "invalid"
+}
+
+function mean(arr) {
+  const xs = arr.filter(x => Number.isFinite(x));
+  if (!xs.length) return null;
+  return xs.reduce((a,b)=>a+b,0) / xs.length;
+}
+
+/* ---------- state ---------- */
+const STAGES = [
+  { key: "entered", label: "1) Alert Entered (HH:MM:SS)" },
+  { key: "detected", label: "2) Detected (HH:MM:SS)" },
+  { key: "responded", label: "3) Responded (HH:MM:SS)" },
+];
+
+let incidents = [
+  { id: "INC-1", t: { entered:{h:0,m:0,s:0}, detected:{h:0,m:0,s:0}, responded:{h:0,m:0,s:0} } },
+  { id: "INC-2", t: { entered:{h:0,m:0,s:0}, detected:{h:0,m:0,s:0}, responded:{h:0,m:0,s:0} } },
+];
+
+function makeHMSCell(inc, stageKey) {
+  const wrap = document.createElement("div");
+  wrap.className = "cell";
+  const v = inc.t[stageKey];
+
+  const h = document.createElement("input"); h.placeholder = "HH"; h.value = v.h;
+  const m = document.createElement("input"); m.placeholder = "MM"; m.value = v.m;
+  const s = document.createElement("input"); s.placeholder = "SS"; s.value = v.s;
+
+  function onPaste(e) {
+    const pasted = (e.clipboardData || window.clipboardData).getData("text");
+    const parsed = parseClockToHMS(pasted);
+    if (!parsed) return; // let default paste happen
+    e.preventDefault();
+    inc.t[stageKey] = parsed;
+    render();
+  }
+
+  function onEdit() {
+    // keep bounds sane for clock time
+    inc.t[stageKey].h = Math.min(23, clampInt(h.value));
+    inc.t[stageKey].m = Math.min(59, clampInt(m.value));
+    inc.t[stageKey].s = Math.min(59, clampInt(s.value));
+  }
+
+  h.addEventListener("input", onEdit);
+  m.addEventListener("input", onEdit);
+  s.addEventListener("input", onEdit);
+
+  h.addEventListener("paste", onPaste);
+  m.addEventListener("paste", onPaste);
+  s.addEventListener("paste", onPaste);
+
+  wrap.appendChild(h);
+  wrap.appendChild(document.createTextNode(" : "));
+  wrap.appendChild(m);
+  wrap.appendChild(document.createTextNode(" : "));
+  wrap.appendChild(s);
+  return wrap;
+}
+
+/* ---------- render ---------- */
+function render() {
+  const tbl = document.getElementById("tbl");
+  tbl.innerHTML = "";
+
+  const thead = document.createElement("thead");
+  const hr = document.createElement("tr");
+
+  const thId = document.createElement("th"); thId.textContent = "Incident";
+  hr.appendChild(thId);
+
+  for (const st of STAGES) {
+    const th = document.createElement("th");
+    th.textContent = st.label;
+    hr.appendChild(th);
+  }
+
+  const thOut = document.createElement("th");
+  thOut.textContent = "Outputs";
+  hr.appendChild(thOut);
+
+  const thDel = document.createElement("th");
+  thDel.textContent = "";
+  hr.appendChild(thDel);
+
+  thead.appendChild(hr);
+  tbl.appendChild(thead);
+
+  const tbody = document.createElement("tbody");
+
+  for (const inc of incidents) {
+    const tr = document.createElement("tr");
+
+    const tdId = document.createElement("td");
+    const idInput = document.createElement("input");
+    idInput.type = "text";
+    idInput.value = inc.id;
+    idInput.addEventListener("change", () => inc.id = idInput.value.trim() || inc.id);
+    tdId.appendChild(idInput);
+    tr.appendChild(tdId);
+
+    for (const st of STAGES) {
+      const td = document.createElement("td");
+      td.appendChild(makeHMSCell(inc, st.key));
+      tr.appendChild(td);
+    }
+
+    const tdOut = document.createElement("td");
+    tdOut.className = "small";
+    tdOut.id = `out-${inc.id}`;
+    tdOut.textContent = "—";
+    tr.appendChild(tdOut);
+
+    const tdDel = document.createElement("td");
+    const delBtn = document.createElement("button");
+    delBtn.textContent = "Remove";
+    delBtn.addEventListener("click", () => {
+      incidents = incidents.filter(x => x !== inc);
+      render();
+    });
+    tdDel.appendChild(delBtn);
+    tr.appendChild(tdDel);
+
+    tbody.appendChild(tr);
+  }
+
+  tbl.appendChild(tbody);
+}
+
+/* ---------- calculate ---------- */
+function calculate() {
+  const midnightHandling = document.getElementById("midnight").checked;
+
+  const ttds = [];
+  const ttrs = [];
+  const totals = [];
+
+  for (const inc of incidents) {
+    const entered = hmsToSecondsSinceMidnight(inc.t.entered.h, inc.t.entered.m, inc.t.entered.s);
+    const detected = hmsToSecondsSinceMidnight(inc.t.detected.h, inc.t.detected.m, inc.t.detected.s);
+    const responded = hmsToSecondsSinceMidnight(inc.t.responded.h, inc.t.responded.m, inc.t.responded.s);
+
+    const ttd = diffClockSeconds(entered, detected, midnightHandling);
+    const ttr = diffClockSeconds(detected, responded, midnightHandling);
+    const total = diffClockSeconds(entered, responded, midnightHandling);
+
+    ttds.push(ttd);
+    ttrs.push(ttr);
+    totals.push(total);
+
+    const out = document.getElementById(`out-${inc.id}`);
+    if (out) {
+      out.innerHTML = [
+        `<b>TTD</b>: ${formatMinSec(ttd)}`,
+        `<b>TTR</b>: ${formatMinSec(ttr)}`,
+        `<b>Total</b>: ${formatMinSec(total)}`
+      ].join("<br/>");
+    }
+  }
+
+  const summary = document.getElementById("summary");
+  summary.innerHTML = "";
+
+  const mttd = mean(ttds);
+  const mttr = mean(ttrs);
+  const mtTotal = mean(totals);
+
+  const cards = [
+    { title: "MTTD (mean TTD)", value: mttd == null ? "—" : formatMinSec(mttd) },
+    { title: "MTTR (mean TTR)", value: mttr == null ? "—" : formatMinSec(mttr) },
+    { title: "Mean Total (Entered → Responded)", value: mtTotal == null ? "—" : formatMinSec(mtTotal) },
+    { title: "Incidents counted", value: `${incidents.length}` },
+  ];
+
+  for (const c of cards) {
+    const card = document.createElement("div");
+    card.className = "card";
+    card.innerHTML = `<div><strong>${c.title}</strong></div><div style="margin-top:6px">${c.value}</div>`;
+    summary.appendChild(card);
+  }
+}
+
+/* ---------- buttons ---------- */
+document.getElementById("addRow").addEventListener("click", () => {
+  const n = incidents.length + 1;
+  incidents.push({ id: `INC-${n}`, t: { entered:{h:0,m:0,s:0}, detected:{h:0,m:0,s:0}, responded:{h:0,m:0,s:0} } });
+  render();
+});
+
+document.getElementById("calc").addEventListener("click", calculate);
+
+/* init */
+render();
+</script>
+</body>
+</html>
