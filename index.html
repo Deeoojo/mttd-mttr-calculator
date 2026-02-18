@@ -1,294 +1,645 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>MTTD / MTTR Calculator (Clock Times)</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>TTD / TTR Calculator</title>
   <style>
-    body { font-family: system-ui, Arial, sans-serif; margin: 24px; max-width: 1100px; }
-    h1 { margin: 0 0 6px; }
-    .small { color:#555; font-size: 13px; }
-    .bar { display:flex; gap:10px; flex-wrap: wrap; align-items: center; margin: 12px 0 16px; }
-    button { padding: 10px 12px; border: 1px solid #ccc; border-radius: 10px; background: #fff; cursor: pointer; }
-    button:hover { background: #f7f7f7; }
-    input[type="text"], input[type="number"] { padding: 8px 10px; border: 1px solid #ccc; border-radius: 10px; }
-    table { width: 100%; border-collapse: collapse; }
-    th, td { border-bottom: 1px solid #eee; padding: 10px 8px; vertical-align: top; }
-    th { text-align: left; background: #fafafa; position: sticky; top: 0; z-index: 1; }
-    .cell { display:flex; gap:6px; align-items: center; flex-wrap: wrap; }
-    .cell input { width: 64px; text-align: center; }
-    .summary { display:flex; gap:12px; flex-wrap: wrap; margin-top: 16px; }
-    .card { border: 1px solid #ddd; border-radius: 12px; padding: 12px 14px; min-width: 270px; }
-    code { background:#f6f6f6; padding:2px 6px; border-radius:6px; }
-    label { display:flex; gap:8px; align-items:center; }
+    :root{
+      --blue:#1e6fff;
+      --blue2:#0b5fff;
+      --bg:#f5f9ff;
+      --card:#ffffff;
+      --text:#0f172a;
+      --muted:#475569;
+      --line:#dbeafe;
+      --bad:#b00020;
+      --ok:#0a7a3b;
+      --shadow: 0 10px 30px rgba(2,6,23,.08);
+      --radius: 16px;
+    }
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      color:var(--text);
+      background:
+        radial-gradient(1200px 600px at 15% -10%, rgba(30,111,255,.20), transparent 55%),
+        radial-gradient(900px 500px at 95% 0%, rgba(30,111,255,.12), transparent 60%),
+        var(--bg);
+    }
+    .wrap{ max-width: 1150px; margin: 28px auto 90px; padding: 0 18px; }
+    header{
+      display:flex; gap:16px; align-items:flex-start; justify-content:space-between;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+    .title{
+      background: linear-gradient(135deg, rgba(30,111,255,.10), rgba(30,111,255,.03));
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 16px 18px;
+      box-shadow: var(--shadow);
+      flex:1;
+      min-width: 300px;
+    }
+    h1{ margin: 0 0 6px; font-size: 22px; letter-spacing: .2px; }
+    .tagline{ margin:0; color:var(--muted); font-size: 13.5px; }
+    .tagline code{
+      background: rgba(30,111,255,.10);
+      border: 1px solid rgba(30,111,255,.18);
+      padding: 1px 6px;
+      border-radius: 10px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 12.5px;
+    }
+
+    .controls{
+      display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:flex-end;
+      min-width: 280px;
+    }
+    button{
+      border: 1px solid rgba(2,6,23,.10);
+      border-radius: 14px;
+      padding: 10px 12px;
+      background: var(--card);
+      cursor: pointer;
+      box-shadow: 0 6px 16px rgba(2,6,23,.06);
+      font-weight: 700;
+    }
+    button:hover{ transform: translateY(-1px); }
+    button:active{ transform: translateY(0); }
+    button:disabled{ opacity:.5; cursor:not-allowed; transform:none; }
+    .primary{
+      background: linear-gradient(180deg, var(--blue), var(--blue2));
+      color: white;
+      border-color: rgba(255,255,255,.0);
+    }
+    .ghost{
+      background: rgba(255,255,255,.65);
+      backdrop-filter: blur(8px);
+    }
+    .toggle{
+      display:flex; gap:8px; align-items:center;
+      padding: 10px 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(2,6,23,.10);
+      background: rgba(255,255,255,.65);
+      backdrop-filter: blur(8px);
+      box-shadow: 0 6px 16px rgba(2,6,23,.06);
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+      user-select: none;
+    }
+    .toggle input{ transform: translateY(1px); }
+
+    .grid{
+      display:grid;
+      grid-template-columns: 1.2fr .95fr;
+      gap: 14px;
+      align-items:start;
+    }
+    @media (max-width: 980px){
+      .grid{ grid-template-columns: 1fr; }
+      .controls{ justify-content:flex-start; }
+    }
+
+    .panel{
+      background: rgba(255,255,255,.72);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .panel .hd{
+      display:flex; align-items:center; justify-content:space-between;
+      padding: 12px 14px;
+      border-bottom: 1px solid rgba(219,234,254,.9);
+      background: linear-gradient(135deg, rgba(30,111,255,.10), rgba(30,111,255,.03));
+    }
+    .panel .hd .left{
+      display:flex; flex-direction:column; gap:2px;
+    }
+    .panel .hd .ttl{ font-weight: 900; }
+    .panel .hd .sub{ color: var(--muted); font-size: 12.5px; font-weight: 650; }
+    #status { font-weight: 800; }
+
+    table{
+      width:100%;
+      border-collapse: collapse;
+    }
+    th, td{
+      border-bottom: 1px solid rgba(219,234,254,.75);
+      padding: 12px 10px;
+      vertical-align: top;
+    }
+    th{
+      text-align:left;
+      color: var(--muted);
+      font-size: 12.5px;
+      font-weight: 900;
+      background: rgba(255,255,255,.55);
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+    .eventName input{
+      width: 100%;
+      padding: 10px 10px;
+      border-radius: 14px;
+      border: 1px solid rgba(2,6,23,.12);
+      background: rgba(255,255,255,.9);
+      font-weight: 800;
+    }
+
+    .timeCell{
+      display:flex;
+      gap: 6px;
+      align-items:center;
+      flex-wrap: wrap;
+    }
+    .timeCell input{
+      width: 64px;
+      text-align:center;
+      padding: 10px 8px;
+      border-radius: 14px;
+      border: 1px solid rgba(2,6,23,.12);
+      background: rgba(255,255,255,.92);
+      font-weight: 800;
+    }
+    .sep{ color: rgba(71,85,105,.6); font-weight: 900; padding: 0 2px; }
+
+    .removeBtn{
+      padding: 9px 10px;
+      border-radius: 14px;
+      background: rgba(255,255,255,.9);
+    }
+
+    .outBox{
+      padding: 12px 14px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 13px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      color: var(--text);
+    }
+    .outEmpty{ color: rgba(71,85,105,.75); }
+    .bad{ color: var(--bad); font-weight: 900; }
+    .ok{ color: var(--ok); font-weight: 900; }
+
+    .cards{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      padding: 12px;
+    }
+    @media (max-width: 520px){
+      .cards{ grid-template-columns: 1fr; }
+    }
+    .card{
+      background: rgba(255,255,255,.82);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 14px 14px;
+      box-shadow: 0 10px 22px rgba(2,6,23,.06);
+      min-height: 92px;
+    }
+    .card .k{ color: var(--muted); font-size: 12.5px; font-weight: 900; }
+    .card .v{ margin-top: 6px; font-size: 18px; font-weight: 950; }
+    .card .h{ margin-top: 6px; color: var(--muted); font-size: 12.5px; font-weight: 650; }
+
+    .footerDock{
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      display:flex;
+      gap: 10px;
+      align-items:center;
+      z-index: 10;
+    }
+    .toast{
+      position: fixed;
+      left: 50%;
+      bottom: 18px;
+      transform: translateX(-50%);
+      background: rgba(15,23,42,.92);
+      color: white;
+      padding: 10px 12px;
+      border-radius: 14px;
+      font-size: 13px;
+      box-shadow: 0 10px 30px rgba(2,6,23,.25);
+      display:none;
+      z-index: 11;
+      font-weight: 700;
+    }
   </style>
 </head>
 <body>
-  <h1>MTTD / MTTR Calculator</h1>
-  <div class="small">
-    Paste real clock times like <code>14:03</code> or <code>14:03:10</code> (also accepts <code>2026-02-18 14:03:10</code>) into any box — it auto-fills H/M/S.<br/>
-    Differences auto-handle crossing midnight (e.g., 23:59 → 00:10 = 11 minutes).
-    Output is always <code>X minutes Y seconds</code>.
+  <div class="wrap">
+    <header>
+      <div class="title">
+        <h1>TTD / TTR Calculator</h1>
+        <p class="tagline">Paste <code>14:03</code> or <code>14:03:10</code>. Get <code>minutes + seconds</code>. Done.</p>
+      </div>
+
+      <div class="controls">
+        <button id="addRow" class="ghost">+ Add event</button>
+        <button id="copy" class="ghost">Copy results</button>
+        <label class="toggle" title="If a later time is earlier (e.g., 23:59 → 00:10), treat it as next day">
+          <input type="checkbox" id="midnight" checked />
+          Midnight rollover
+        </label>
+      </div>
+    </header>
+
+    <div class="grid">
+      <section class="panel">
+        <div class="hd">
+          <div class="left">
+            <div class="ttl">Events</div>
+            <div class="sub">Clock times per stage (HH:MM or HH:MM:SS)</div>
+          </div>
+          <div class="sub" id="status"></div>
+        </div>
+
+        <div style="overflow:auto;">
+          <table id="tbl"></table>
+        </div>
+      </section>
+
+      <aside class="panel">
+        <div class="hd">
+          <div class="left">
+            <div class="ttl">Summary</div>
+            <div class="sub" id="summarySub">Run Calculate</div>
+          </div>
+        </div>
+
+        <div class="cards" id="summary"></div>
+
+        <div class="hd" style="border-top:1px solid rgba(219,234,254,.9); border-bottom:none;">
+          <div class="left">
+            <div class="ttl">Per-event output</div>
+            <div class="sub">Plain text (copy/paste friendly)</div>
+          </div>
+        </div>
+        <div id="output" class="outBox outEmpty">Run Calculate to see results.</div>
+      </aside>
+    </div>
   </div>
 
-  <div class="bar">
-    <button id="addRow">Add incident</button>
-    <button id="calc">Calculate</button>
-    <label class="small">
-      <input type="checkbox" id="midnight" checked />
-      Auto-handle crossing midnight
-    </label>
+  <div class="footerDock">
+    <button id="calc" class="primary">Calculate</button>
   </div>
 
-  <table id="tbl"></table>
-
-  <div class="summary" id="summary"></div>
+  <div id="toast" class="toast"></div>
 
 <script>
-/* ---------- helpers ---------- */
-function clampInt(v) {
-  const n = parseInt(String(v ?? "").trim(), 10);
-  return Number.isFinite(n) && n >= 0 ? n : 0;
-}
+(() => {
+  "use strict";
 
-// Always: "X minutes Y seconds" (hours rolled into minutes)
-function formatMinSec(totalSeconds) {
-  const s = Math.max(0, Math.round(totalSeconds));
-  const minutes = Math.floor(s / 60);
-  const seconds = s % 60;
-  return `${minutes} minutes ${seconds} seconds`;
-}
+  /* ---------------- helpers ---------------- */
+  const $ = (id) => document.getElementById(id);
 
-/**
- * Parse pasted clock time into {h,m,s}.
- * Accepts:
- *  - "HH:MM"
- *  - "HH:MM:SS"
- *  - "YYYY-MM-DD HH:MM(:SS)" or ISO "YYYY-MM-DDTHH:MM(:SS)"
- */
-function parseClockToHMS(text) {
-  const t = String(text || "").trim();
-  if (!t) return null;
-
-  // Try to extract time part from date-time strings
-  // Find last occurrence of HH:MM(:SS)
-  const m = t.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?\s*$/);
-  if (!m) return null;
-
-  const h = clampInt(m[1]);
-  const mi = clampInt(m[2]);
-  const s = clampInt(m[3] ?? 0);
-
-  if (h > 23 || mi > 59 || s > 59) return null;
-  return { h, m: mi, s };
-}
-
-function hmsToSecondsSinceMidnight(h, m, s) {
-  const hh = clampInt(h), mm = clampInt(m), ss = clampInt(s);
-  return hh * 3600 + mm * 60 + ss;
-}
-
-/**
- * Compute forward difference between two times-of-day (seconds since midnight).
- * If end < start and midnightHandling=true, assume end is next day (+24h).
- */
-function diffClockSeconds(startSec, endSec, midnightHandling) {
-  if (endSec >= startSec) return endSec - startSec;
-  return midnightHandling ? (endSec + 86400) - startSec : 0; // or clamp to 0 if you prefer "invalid"
-}
-
-function mean(arr) {
-  const xs = arr.filter(x => Number.isFinite(x));
-  if (!xs.length) return null;
-  return xs.reduce((a,b)=>a+b,0) / xs.length;
-}
-
-/* ---------- state ---------- */
-const STAGES = [
-  { key: "entered", label: "1) Alert Entered (HH:MM:SS)" },
-  { key: "detected", label: "2) Detected (HH:MM:SS)" },
-  { key: "responded", label: "3) Responded (HH:MM:SS)" },
-];
-
-let incidents = [
-  { id: "INC-1", t: { entered:{h:0,m:0,s:0}, detected:{h:0,m:0,s:0}, responded:{h:0,m:0,s:0} } },
-  { id: "INC-2", t: { entered:{h:0,m:0,s:0}, detected:{h:0,m:0,s:0}, responded:{h:0,m:0,s:0} } },
-];
-
-function makeHMSCell(inc, stageKey) {
-  const wrap = document.createElement("div");
-  wrap.className = "cell";
-  const v = inc.t[stageKey];
-
-  const h = document.createElement("input"); h.placeholder = "HH"; h.value = v.h;
-  const m = document.createElement("input"); m.placeholder = "MM"; m.value = v.m;
-  const s = document.createElement("input"); s.placeholder = "SS"; s.value = v.s;
-
-  function onPaste(e) {
-    const pasted = (e.clipboardData || window.clipboardData).getData("text");
-    const parsed = parseClockToHMS(pasted);
-    if (!parsed) return; // let default paste happen
-    e.preventDefault();
-    inc.t[stageKey] = parsed;
-    render();
+  function clampInt(v) {
+    const n = parseInt(String(v ?? "").trim(), 10);
+    return Number.isFinite(n) && n >= 0 ? n : 0;
   }
 
-  function onEdit() {
-    // keep bounds sane for clock time
-    inc.t[stageKey].h = Math.min(23, clampInt(h.value));
-    inc.t[stageKey].m = Math.min(59, clampInt(m.value));
-    inc.t[stageKey].s = Math.min(59, clampInt(s.value));
+  function formatMinSec(totalSeconds) {
+    const s = Math.max(0, Math.round(totalSeconds));
+    const minutes = Math.floor(s / 60);
+    const seconds = s % 60;
+    return `${minutes} minutes ${seconds} seconds`;
   }
 
-  h.addEventListener("input", onEdit);
-  m.addEventListener("input", onEdit);
-  s.addEventListener("input", onEdit);
+  // Extract trailing HH:MM(:SS) from any pasted string (supports "2026-02-18 14:03:10")
+  function parseClockToHMS(text) {
+    const t = String(text || "").trim();
+    if (!t) return null;
 
-  h.addEventListener("paste", onPaste);
-  m.addEventListener("paste", onPaste);
-  s.addEventListener("paste", onPaste);
+    const m = t.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?\s*$/);
+    if (!m) return null;
 
-  wrap.appendChild(h);
-  wrap.appendChild(document.createTextNode(" : "));
-  wrap.appendChild(m);
-  wrap.appendChild(document.createTextNode(" : "));
-  wrap.appendChild(s);
-  return wrap;
-}
+    const h = clampInt(m[1]);
+    const mi = clampInt(m[2]);
+    const s = clampInt(m[3] ?? 0);
 
-/* ---------- render ---------- */
-function render() {
-  const tbl = document.getElementById("tbl");
-  tbl.innerHTML = "";
-
-  const thead = document.createElement("thead");
-  const hr = document.createElement("tr");
-
-  const thId = document.createElement("th"); thId.textContent = "Incident";
-  hr.appendChild(thId);
-
-  for (const st of STAGES) {
-    const th = document.createElement("th");
-    th.textContent = st.label;
-    hr.appendChild(th);
+    if (h > 23 || mi > 59 || s > 59) return null;
+    return { h, m: mi, s };
   }
 
-  const thOut = document.createElement("th");
-  thOut.textContent = "Outputs";
-  hr.appendChild(thOut);
-
-  const thDel = document.createElement("th");
-  thDel.textContent = "";
-  hr.appendChild(thDel);
-
-  thead.appendChild(hr);
-  tbl.appendChild(thead);
-
-  const tbody = document.createElement("tbody");
-
-  for (const inc of incidents) {
-    const tr = document.createElement("tr");
-
-    const tdId = document.createElement("td");
-    const idInput = document.createElement("input");
-    idInput.type = "text";
-    idInput.value = inc.id;
-    idInput.addEventListener("change", () => inc.id = idInput.value.trim() || inc.id);
-    tdId.appendChild(idInput);
-    tr.appendChild(tdId);
-
-    for (const st of STAGES) {
-      const td = document.createElement("td");
-      td.appendChild(makeHMSCell(inc, st.key));
-      tr.appendChild(td);
-    }
-
-    const tdOut = document.createElement("td");
-    tdOut.className = "small";
-    tdOut.id = `out-${inc.id}`;
-    tdOut.textContent = "—";
-    tr.appendChild(tdOut);
-
-    const tdDel = document.createElement("td");
-    const delBtn = document.createElement("button");
-    delBtn.textContent = "Remove";
-    delBtn.addEventListener("click", () => {
-      incidents = incidents.filter(x => x !== inc);
-      render();
-    });
-    tdDel.appendChild(delBtn);
-    tr.appendChild(tdDel);
-
-    tbody.appendChild(tr);
+  function hmsToSec(h, m, s) {
+    return clampInt(h) * 3600 + clampInt(m) * 60 + clampInt(s);
   }
 
-  tbl.appendChild(tbody);
-}
-
-/* ---------- calculate ---------- */
-function calculate() {
-  const midnightHandling = document.getElementById("midnight").checked;
-
-  const ttds = [];
-  const ttrs = [];
-  const totals = [];
-
-  for (const inc of incidents) {
-    const entered = hmsToSecondsSinceMidnight(inc.t.entered.h, inc.t.entered.m, inc.t.entered.s);
-    const detected = hmsToSecondsSinceMidnight(inc.t.detected.h, inc.t.detected.m, inc.t.detected.s);
-    const responded = hmsToSecondsSinceMidnight(inc.t.responded.h, inc.t.responded.m, inc.t.responded.s);
-
-    const ttd = diffClockSeconds(entered, detected, midnightHandling);
-    const ttr = diffClockSeconds(detected, responded, midnightHandling);
-    const total = diffClockSeconds(entered, responded, midnightHandling);
-
-    ttds.push(ttd);
-    ttrs.push(ttr);
-    totals.push(total);
-
-    const out = document.getElementById(`out-${inc.id}`);
-    if (out) {
-      out.innerHTML = [
-        `<b>TTD</b>: ${formatMinSec(ttd)}`,
-        `<b>TTR</b>: ${formatMinSec(ttr)}`,
-        `<b>Total</b>: ${formatMinSec(total)}`
-      ].join("<br/>");
-    }
+  // If end < start and midnightHandling=true, assume next day. If false, return NaN so we can mark invalid.
+  function diffClockSeconds(startSec, endSec, midnightHandling) {
+    if (endSec >= startSec) return endSec - startSec;
+    return midnightHandling ? (endSec + 86400) - startSec : NaN;
   }
 
-  const summary = document.getElementById("summary");
-  summary.innerHTML = "";
+  function mean(arr) {
+    const xs = arr.filter(x => Number.isFinite(x));
+    if (!xs.length) return null;
+    return xs.reduce((a,b)=>a+b,0) / xs.length;
+  }
 
-  const mttd = mean(ttds);
-  const mttr = mean(ttrs);
-  const mtTotal = mean(totals);
+  function isAllZero(t){ return (t.h|0)===0 && (t.m|0)===0 && (t.s|0)===0; }
 
-  const cards = [
-    { title: "MTTD (mean TTD)", value: mttd == null ? "—" : formatMinSec(mttd) },
-    { title: "MTTR (mean TTR)", value: mttr == null ? "—" : formatMinSec(mttr) },
-    { title: "Mean Total (Entered → Responded)", value: mtTotal == null ? "—" : formatMinSec(mtTotal) },
-    { title: "Incidents counted", value: `${incidents.length}` },
+  function toast(msg){
+    const el = $("toast");
+    el.textContent = msg;
+    el.style.display = "block";
+    clearTimeout(toast._t);
+    toast._t = setTimeout(()=> el.style.display="none", 1500);
+  }
+
+  /* ---------------- config ---------------- */
+  const STAGES = [
+    { key: "created",  label: "1) System created alert" },
+    { key: "detected", label: "2) Time detected" },
+    { key: "response", label: "3) Response" },
   ];
 
-  for (const c of cards) {
-    const card = document.createElement("div");
-    card.className = "card";
-    card.innerHTML = `<div><strong>${c.title}</strong></div><div style="margin-top:6px">${c.value}</div>`;
-    summary.appendChild(card);
+  /* ---------------- state ---------------- */
+  let events = [
+    { name: "Event 1", t: {
+      created:{h:0,m:0,s:0},
+      detected:{h:0,m:0,s:0},
+      response:{h:0,m:0,s:0}
+    }}
+  ];
+
+  /* ---------------- UI builders ---------------- */
+  function makeTimeCell(ev, stageKey) {
+    const wrap = document.createElement("div");
+    wrap.className = "timeCell";
+
+    const v = ev.t[stageKey];
+
+    const h = document.createElement("input"); h.placeholder = "HH"; h.value = v.h;
+    const m = document.createElement("input"); m.placeholder = "MM"; m.value = v.m;
+    const s = document.createElement("input"); s.placeholder = "SS"; s.value = v.s;
+
+    function normalizeFromInputs() {
+      ev.t[stageKey].h = Math.min(23, clampInt(h.value));
+      ev.t[stageKey].m = Math.min(59, clampInt(m.value));
+      ev.t[stageKey].s = Math.min(59, clampInt(s.value));
+      // keep the displayed values in-range too
+      h.value = ev.t[stageKey].h;
+      m.value = ev.t[stageKey].m;
+      s.value = ev.t[stageKey].s;
+    }
+
+    function onPaste(e) {
+      const pasted = (e.clipboardData || window.clipboardData).getData("text");
+      const parsed = parseClockToHMS(pasted);
+      if (!parsed) return; // let normal paste happen
+      e.preventDefault();
+      ev.t[stageKey] = parsed;
+      render();
+    }
+
+    h.addEventListener("input", normalizeFromInputs);
+    m.addEventListener("input", normalizeFromInputs);
+    s.addEventListener("input", normalizeFromInputs);
+
+    h.addEventListener("paste", onPaste);
+    m.addEventListener("paste", onPaste);
+    s.addEventListener("paste", onPaste);
+
+    wrap.appendChild(h);
+    wrap.appendChild(Object.assign(document.createElement("span"), {className:"sep", textContent:":"}));
+    wrap.appendChild(m);
+    wrap.appendChild(Object.assign(document.createElement("span"), {className:"sep", textContent:":"}));
+    wrap.appendChild(s);
+
+    return wrap;
   }
-}
 
-/* ---------- buttons ---------- */
-document.getElementById("addRow").addEventListener("click", () => {
-  const n = incidents.length + 1;
-  incidents.push({ id: `INC-${n}`, t: { entered:{h:0,m:0,s:0}, detected:{h:0,m:0,s:0}, responded:{h:0,m:0,s:0} } });
+  function render() {
+    const tbl = $("tbl");
+    tbl.innerHTML = "";
+
+    const thead = document.createElement("thead");
+    const trh = document.createElement("tr");
+
+    const th0 = document.createElement("th"); th0.textContent = "Event";
+    trh.appendChild(th0);
+
+    for (const st of STAGES) {
+      const th = document.createElement("th");
+      th.textContent = st.label;
+      trh.appendChild(th);
+    }
+
+    const thE = document.createElement("th"); thE.textContent = "";
+    trh.appendChild(thE);
+
+    thead.appendChild(trh);
+    tbl.appendChild(thead);
+
+    const tbody = document.createElement("tbody");
+
+    events.forEach((ev, idx) => {
+      const tr = document.createElement("tr");
+
+      const tdName = document.createElement("td");
+      tdName.className = "eventName";
+      const nameInput = document.createElement("input");
+      nameInput.value = ev.name || `Event ${idx+1}`;
+      nameInput.addEventListener("change", () => {
+        const v = nameInput.value.trim();
+        ev.name = v || `Event ${idx+1}`;
+        nameInput.value = ev.name;
+      });
+      tdName.appendChild(nameInput);
+      tr.appendChild(tdName);
+
+      for (const st of STAGES) {
+        const td = document.createElement("td");
+        td.appendChild(makeTimeCell(ev, st.key));
+        tr.appendChild(td);
+      }
+
+      const tdDel = document.createElement("td");
+      tdDel.style.textAlign = "right";
+      const del = document.createElement("button");
+      del.className = "removeBtn";
+      del.textContent = "Remove";
+      del.disabled = events.length === 1;
+      del.title = del.disabled ? "Keep at least one event" : "Remove this event";
+      del.addEventListener("click", () => {
+        if (events.length === 1) return;
+        events = events.filter(x => x !== ev);
+        // Re-label default names if the user never customized them (nice-to-have)
+        events.forEach((e, i) => {
+          if (/^Event\s+\d+$/i.test(e.name || "")) e.name = `Event ${i+1}`;
+        });
+        render();
+      });
+      tdDel.appendChild(del);
+      tr.appendChild(tdDel);
+
+      tbody.appendChild(tr);
+    });
+
+    tbl.appendChild(tbody);
+
+    // Don’t keep stale status when you change inputs.
+    $("status").textContent = "";
+  }
+
+  /* ---------------- calculation ---------------- */
+  function calculate() {
+    const midnightHandling = $("midnight").checked;
+
+    const ttds = [];
+    const ttrs = [];
+    const errors = [];
+    const lines = [];
+
+    events.forEach((ev, idx) => {
+      const name = (ev.name || `Event ${idx+1}`).trim() || `Event ${idx+1}`;
+      const c = ev.t.created, d = ev.t.detected, r = ev.t.response;
+
+      // “All zero” is almost always “not filled”
+      const allEmpty = isAllZero(c) && isAllZero(d) && isAllZero(r);
+      if (allEmpty) {
+        errors.push(`${name}: missing times`);
+        lines.push(`${name}\n  ERROR: missing times\n`);
+        return;
+      }
+      if (isAllZero(c) || isAllZero(d) || isAllZero(r)) {
+        errors.push(`${name}: missing one or more times`);
+        lines.push(`${name}\n  ERROR: missing one or more times\n`);
+        return;
+      }
+
+      const createdSec  = hmsToSec(c.h, c.m, c.s);
+      const detectedSec = hmsToSec(d.h, d.m, d.s);
+      const responseSec = hmsToSec(r.h, r.m, r.s);
+
+      const ttd = diffClockSeconds(createdSec, detectedSec, midnightHandling);
+      const ttr = diffClockSeconds(detectedSec, responseSec, midnightHandling);
+
+      if (!Number.isFinite(ttd) || !Number.isFinite(ttr)) {
+        errors.push(`${name}: times out of order (try Midnight rollover)`);
+        lines.push(`${name}\n  ERROR: times out of order (try Midnight rollover)\n`);
+        return;
+      }
+
+      ttds.push(ttd);
+      ttrs.push(ttr);
+
+      lines.push(
+`${name}
+  TTD: ${formatMinSec(ttd)}
+  TTR: ${formatMinSec(ttr)}
+`
+      );
+    });
+
+    const valid = ttds.length;
+    const invalid = errors.length;
+    const totalRows = events.length;
+
+    const showMeans = valid >= 2;
+    const labelTTD = showMeans ? "MTTD" : "TTD";
+    const labelTTR = showMeans ? "MTTR" : "TTR";
+
+    const valueTTD = showMeans ? mean(ttds) : (valid === 1 ? ttds[0] : null);
+    const valueTTR = showMeans ? mean(ttrs) : (valid === 1 ? ttrs[0] : null);
+
+    const summary = $("summary");
+    summary.innerHTML = "";
+
+    const cards = [
+      {
+        k: labelTTD,
+        v: valueTTD == null ? "—" : formatMinSec(valueTTD),
+        h: showMeans ? "Mean (Created → Detected)" : "Created → Detected"
+      },
+      {
+        k: labelTTR,
+        v: valueTTR == null ? "—" : formatMinSec(valueTTR),
+        h: showMeans ? "Mean (Detected → Response)" : "Detected → Response"
+      },
+      {
+        k: "Rows",
+        v: `${valid} valid / ${totalRows} total`,
+        h: invalid ? `${invalid} invalid (ignored)` : "All good"
+      },
+    ];
+
+    for (const c of cards) {
+      const el = document.createElement("div");
+      el.className = "card";
+      el.innerHTML = `<div class="k">${c.k}</div><div class="v">${c.v}</div><div class="h">${c.h}</div>`;
+      summary.appendChild(el);
+    }
+
+    $("summarySub").textContent =
+      valid === 1 ? "Single event" :
+      valid >= 2 ? "Multiple events (means)" :
+      "No valid events";
+
+    $("status").innerHTML = invalid
+      ? `<span class="bad">${invalid} invalid</span> · <span class="ok">${valid} valid</span>`
+      : (valid ? `<span class="ok">All valid</span>` : `<span class="bad">No valid</span>`);
+
+    const out = $("output");
+    out.classList.remove("outEmpty");
+    out.textContent =
+      lines.join("\n") +
+      (errors.length ? ("\nInvalid rows:\n- " + errors.join("\n- ")) : "");
+  }
+
+  /* ---------------- copy results ---------------- */
+  async function copyResults() {
+    const text = $("output").textContent || "";
+    if (!text.trim() || text.includes("Run Calculate")) {
+      toast("Nothing to copy yet.");
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+      toast("Copied.");
+    } catch {
+      // fallback
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+      toast("Copied.");
+    }
+  }
+
+  /* ---------------- events ---------------- */
+  $("addRow").addEventListener("click", () => {
+    const n = events.length + 1;
+    events.push({
+      name: `Event ${n}`,
+      t: {
+        created:{h:0,m:0,s:0},
+        detected:{h:0,m:0,s:0},
+        response:{h:0,m:0,s:0}
+      }
+    });
+    render();
+  });
+
+  $("calc").addEventListener("click", calculate);
+  $("copy").addEventListener("click", copyResults);
+
+  // init
   render();
-});
-
-document.getElementById("calc").addEventListener("click", calculate);
-
-/* init */
-render();
+})();
 </script>
 </body>
 </html>
