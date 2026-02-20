@@ -46,7 +46,6 @@
       min-width: 300px;
     }
     h1{ margin: 0 0 2px; font-size: 22px; letter-spacing: .2px; }
-    /* Keep a little vertical rhythm, but show nothing */
     .subtitle{ margin:0; min-height: 18px; }
 
     .controls{
@@ -306,6 +305,11 @@
     return Number.isFinite(n) && n >= 0 ? n : 0;
   }
 
+  function pad2(n){
+    const x = clampInt(n);
+    return String(x).padStart(2, "0");
+  }
+
   // >= 1 hour: "H hours M minutes S seconds", else: "M minutes S seconds"
   function formatHMS(totalSeconds) {
     const s0 = Math.max(0, Math.round(totalSeconds));
@@ -380,17 +384,17 @@
 
     const v = ev.t[stageKey];
 
-    const h = document.createElement("input"); h.placeholder = "HH"; h.value = v.h;
-    const m = document.createElement("input"); m.placeholder = "MM"; m.value = v.m;
-    const s = document.createElement("input"); s.placeholder = "SS"; s.value = v.s;
+    const h = document.createElement("input"); h.placeholder = "HH"; h.value = pad2(v.h);
+    const m = document.createElement("input"); m.placeholder = "MM"; m.value = pad2(v.m);
+    const s = document.createElement("input"); s.placeholder = "SS"; s.value = pad2(v.s);
 
     function normalizeFromInputs() {
       ev.t[stageKey].h = Math.min(23, clampInt(h.value));
       ev.t[stageKey].m = Math.min(59, clampInt(m.value));
       ev.t[stageKey].s = Math.min(59, clampInt(s.value));
-      h.value = ev.t[stageKey].h;
-      m.value = ev.t[stageKey].m;
-      s.value = ev.t[stageKey].s;
+      h.value = pad2(ev.t[stageKey].h);
+      m.value = pad2(ev.t[stageKey].m);
+      s.value = pad2(ev.t[stageKey].s);
     }
 
     function onPaste(e) {
@@ -552,21 +556,9 @@
     summary.innerHTML = "";
 
     const cards = [
-      {
-        k: labelTTD,
-        v: valueTTD == null ? "—" : formatHMS(valueTTD),
-        h: showMeans ? "Mean (Created → Detected)" : "Created → Detected"
-      },
-      {
-        k: labelTTR,
-        v: valueTTR == null ? "—" : formatHMS(valueTTR),
-        h: showMeans ? "Mean (Detected → Response)" : "Detected → Response"
-      },
-      {
-        k: "Rows",
-        v: `${valid} valid / ${totalRows} total`,
-        h: invalid ? `${invalid} invalid (ignored)` : "All good"
-      },
+      { k: labelTTD, v: valueTTD == null ? "—" : formatHMS(valueTTD), h: showMeans ? "Mean (Created → Detected)" : "Created → Detected" },
+      { k: labelTTR, v: valueTTR == null ? "—" : formatHMS(valueTTR), h: showMeans ? "Mean (Detected → Response)" : "Detected → Response" },
+      { k: "Rows", v: `${valid} valid / ${totalRows} total`, h: invalid ? `${invalid} invalid (ignored)` : "All good" },
     ];
 
     for (const c of cards) {
