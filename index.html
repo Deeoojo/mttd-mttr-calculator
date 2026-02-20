@@ -29,11 +29,45 @@
         var(--bg);
     }
     .wrap{ max-width: 1150px; margin: 28px auto 90px; padding: 0 18px; }
+
     header{
       display:flex; gap:16px; align-items:flex-start; justify-content:space-between;
       margin-bottom: 16px;
       flex-wrap: wrap;
     }
+
+    /* Signature */
+    .sigWrap{
+      display:flex;
+      align-items:center;
+      gap: 12px;
+      min-width: 220px;
+    }
+    .sig{
+      font-family: ui-rounded, "Segoe Script", "Brush Script MT", "Comic Sans MS", cursive;
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: .6px;
+      color: var(--blue2);
+      transform: rotate(-2deg);
+      padding: 6px 10px;
+      border-radius: 14px;
+      background: rgba(255,255,255,.70);
+      border: 1px solid rgba(219,234,254,.9);
+      box-shadow: 0 10px 22px rgba(2,6,23,.06);
+      user-select:none;
+      white-space: nowrap;
+    }
+    .sig::after{
+      content:"";
+      display:block;
+      height: 2px;
+      width: 70%;
+      margin-top: 2px;
+      background: linear-gradient(90deg, rgba(11,95,255,.0), rgba(11,95,255,.65), rgba(11,95,255,.0));
+      border-radius: 999px;
+    }
+
     .title{
       background: linear-gradient(135deg, rgba(30,111,255,.10), rgba(30,111,255,.03));
       border: 1px solid var(--line);
@@ -43,16 +77,8 @@
       flex:1;
       min-width: 300px;
     }
-    h1{ margin: 0 0 6px; font-size: 22px; letter-spacing: .2px; }
-    .tagline{ margin:0; color:var(--muted); font-size: 13.5px; }
-    .tagline code{
-      background: rgba(30,111,255,.10);
-      border: 1px solid rgba(30,111,255,.18);
-      padding: 1px 6px;
-      border-radius: 10px;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-      font-size: 12.5px;
-    }
+    h1{ margin: 0 0 2px; font-size: 22px; letter-spacing: .2px; }
+    .subtitle{ margin:0; color:var(--muted); font-size: 13px; font-weight: 650; }
 
     .controls{
       display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:flex-end;
@@ -79,6 +105,14 @@
       background: rgba(255,255,255,.65);
       backdrop-filter: blur(8px);
     }
+    .danger{
+      background: rgba(255,255,255,.75);
+      border-color: rgba(176,0,32,.22);
+    }
+    .danger:hover{
+      border-color: rgba(176,0,32,.45);
+    }
+
     .toggle{
       display:flex; gap:8px; align-items:center;
       padding: 10px 12px;
@@ -103,6 +137,8 @@
     @media (max-width: 980px){
       .grid{ grid-template-columns: 1fr; }
       .controls{ justify-content:flex-start; }
+      .sigWrap{ order: 0; }
+      .title{ order: 1; }
     }
 
     .panel{
@@ -239,13 +275,18 @@
 <body>
   <div class="wrap">
     <header>
+      <div class="sigWrap">
+        <div class="sig" aria-label="Signature">Demi</div>
+      </div>
+
       <div class="title">
         <h1>TTD / TTR Calculator</h1>
-        <p class="tagline">Paste <code>14:03</code> or <code>14:03:10</code>. Get <code>minutes + seconds</code>. Done.</p>
+        <p class="subtitle">Three stages. Clock times in, durations out.</p>
       </div>
 
       <div class="controls">
         <button id="addRow" class="ghost">+ Add event</button>
+        <button id="clear" class="danger">Clear</button>
         <button id="copy" class="ghost">Copy results</button>
         <label class="toggle" title="If a later time is earlier (e.g., 23:59 → 00:10), treat it as next day">
           <input type="checkbox" id="midnight" checked />
@@ -282,7 +323,7 @@
         <div class="hd" style="border-top:1px solid rgba(219,234,254,.9); border-bottom:none;">
           <div class="left">
             <div class="ttl">Per-event output</div>
-            <div class="sub">Plain text (copy/paste friendly)</div>
+            <div class="sub"></div>
           </div>
         </div>
         <div id="output" class="outBox outEmpty">Run Calculate to see results.</div>
@@ -308,10 +349,16 @@
     return Number.isFinite(n) && n >= 0 ? n : 0;
   }
 
-  function formatMinSec(totalSeconds) {
-    const s = Math.max(0, Math.round(totalSeconds));
-    const minutes = Math.floor(s / 60);
-    const seconds = s % 60;
+  // If >= 1 hour: "H hours M minutes S seconds"
+  // Else: "M minutes S seconds"
+  function formatHMS(totalSeconds) {
+    const s0 = Math.max(0, Math.round(totalSeconds));
+    const hours = Math.floor(s0 / 3600);
+    const rem = s0 % 3600;
+    const minutes = Math.floor(rem / 60);
+    const seconds = rem % 60;
+
+    if (hours > 0) return `${hours} hour${hours === 1 ? "" : "s"} ${minutes} minutes ${seconds} seconds`;
     return `${minutes} minutes ${seconds} seconds`;
   }
 
@@ -365,13 +412,15 @@
   ];
 
   /* ---------------- state ---------------- */
-  let events = [
-    { name: "Event 1", t: {
+  function newEvent(name) {
+    return { name, t: {
       created:{h:0,m:0,s:0},
       detected:{h:0,m:0,s:0},
       response:{h:0,m:0,s:0}
-    }}
-  ];
+    }};
+  }
+
+  let events = [ newEvent("Event 1") ];
 
   /* ---------------- UI builders ---------------- */
   function makeTimeCell(ev, stageKey) {
@@ -388,7 +437,6 @@
       ev.t[stageKey].h = Math.min(23, clampInt(h.value));
       ev.t[stageKey].m = Math.min(59, clampInt(m.value));
       ev.t[stageKey].s = Math.min(59, clampInt(s.value));
-      // keep the displayed values in-range too
       h.value = ev.t[stageKey].h;
       m.value = ev.t[stageKey].m;
       s.value = ev.t[stageKey].s;
@@ -397,7 +445,7 @@
     function onPaste(e) {
       const pasted = (e.clipboardData || window.clipboardData).getData("text");
       const parsed = parseClockToHMS(pasted);
-      if (!parsed) return; // let normal paste happen
+      if (!parsed) return;
       e.preventDefault();
       ev.t[stageKey] = parsed;
       render();
@@ -475,7 +523,6 @@
       del.addEventListener("click", () => {
         if (events.length === 1) return;
         events = events.filter(x => x !== ev);
-        // Re-label default names if the user never customized them (nice-to-have)
         events.forEach((e, i) => {
           if (/^Event\s+\d+$/i.test(e.name || "")) e.name = `Event ${i+1}`;
         });
@@ -488,8 +535,6 @@
     });
 
     tbl.appendChild(tbody);
-
-    // Don’t keep stale status when you change inputs.
     $("status").textContent = "";
   }
 
@@ -506,7 +551,6 @@
       const name = (ev.name || `Event ${idx+1}`).trim() || `Event ${idx+1}`;
       const c = ev.t.created, d = ev.t.detected, r = ev.t.response;
 
-      // “All zero” is almost always “not filled”
       const allEmpty = isAllZero(c) && isAllZero(d) && isAllZero(r);
       if (allEmpty) {
         errors.push(`${name}: missing times`);
@@ -537,8 +581,8 @@
 
       lines.push(
 `${name}
-  TTD: ${formatMinSec(ttd)}
-  TTR: ${formatMinSec(ttr)}
+  TTD: ${formatHMS(ttd)}
+  TTR: ${formatHMS(ttr)}
 `
       );
     });
@@ -560,12 +604,12 @@
     const cards = [
       {
         k: labelTTD,
-        v: valueTTD == null ? "—" : formatMinSec(valueTTD),
+        v: valueTTD == null ? "—" : formatHMS(valueTTD),
         h: showMeans ? "Mean (Created → Detected)" : "Created → Detected"
       },
       {
         k: labelTTR,
-        v: valueTTR == null ? "—" : formatMinSec(valueTTR),
+        v: valueTTR == null ? "—" : formatHMS(valueTTR),
         h: showMeans ? "Mean (Detected → Response)" : "Detected → Response"
       },
       {
@@ -584,7 +628,7 @@
 
     $("summarySub").textContent =
       valid === 1 ? "Single event" :
-      valid >= 2 ? "Multiple events (means)" :
+      valid >= 2 ? "Multiple events" :
       "No valid events";
 
     $("status").innerHTML = invalid
@@ -609,7 +653,6 @@
       await navigator.clipboard.writeText(text);
       toast("Copied.");
     } catch {
-      // fallback
       const ta = document.createElement("textarea");
       ta.value = text;
       document.body.appendChild(ta);
@@ -620,22 +663,28 @@
     }
   }
 
-  /* ---------------- events ---------------- */
+  function clearAll() {
+    events = [ newEvent("Event 1") ];
+    $("summary").innerHTML = "";
+    $("summarySub").textContent = "Run Calculate";
+    $("status").textContent = "";
+    const out = $("output");
+    out.textContent = "Run Calculate to see results.";
+    out.classList.add("outEmpty");
+    render();
+    toast("Cleared.");
+  }
+
+  /* ---------------- wire up ---------------- */
   $("addRow").addEventListener("click", () => {
     const n = events.length + 1;
-    events.push({
-      name: `Event ${n}`,
-      t: {
-        created:{h:0,m:0,s:0},
-        detected:{h:0,m:0,s:0},
-        response:{h:0,m:0,s:0}
-      }
-    });
+    events.push(newEvent(`Event ${n}`));
     render();
   });
 
   $("calc").addEventListener("click", calculate);
   $("copy").addEventListener("click", copyResults);
+  $("clear").addEventListener("click", clearAll);
 
   // init
   render();
