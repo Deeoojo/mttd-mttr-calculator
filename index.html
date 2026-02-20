@@ -36,38 +36,6 @@
       flex-wrap: wrap;
     }
 
-    /* Signature */
-    .sigWrap{
-      display:flex;
-      align-items:center;
-      gap: 12px;
-      min-width: 220px;
-    }
-    .sig{
-      font-family: ui-rounded, "Segoe Script", "Brush Script MT", "Comic Sans MS", cursive;
-      font-size: 20px;
-      font-weight: 800;
-      letter-spacing: .6px;
-      color: var(--blue2);
-      transform: rotate(-2deg);
-      padding: 6px 10px;
-      border-radius: 14px;
-      background: rgba(255,255,255,.70);
-      border: 1px solid rgba(219,234,254,.9);
-      box-shadow: 0 10px 22px rgba(2,6,23,.06);
-      user-select:none;
-      white-space: nowrap;
-    }
-    .sig::after{
-      content:"";
-      display:block;
-      height: 2px;
-      width: 70%;
-      margin-top: 2px;
-      background: linear-gradient(90deg, rgba(11,95,255,.0), rgba(11,95,255,.65), rgba(11,95,255,.0));
-      border-radius: 999px;
-    }
-
     .title{
       background: linear-gradient(135deg, rgba(30,111,255,.10), rgba(30,111,255,.03));
       border: 1px solid var(--line);
@@ -78,7 +46,7 @@
       min-width: 300px;
     }
     h1{ margin: 0 0 2px; font-size: 22px; letter-spacing: .2px; }
-    .subtitle{ margin:0; color:var(--muted); font-size: 13px; font-weight: 650; }
+    .subtitle{ margin:0; color:var(--muted); font-size: 13px; font-weight: 650; min-height: 18px; }
 
     .controls{
       display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:flex-end;
@@ -109,9 +77,7 @@
       background: rgba(255,255,255,.75);
       border-color: rgba(176,0,32,.22);
     }
-    .danger:hover{
-      border-color: rgba(176,0,32,.45);
-    }
+    .danger:hover{ border-color: rgba(176,0,32,.45); }
 
     .toggle{
       display:flex; gap:8px; align-items:center;
@@ -137,8 +103,6 @@
     @media (max-width: 980px){
       .grid{ grid-template-columns: 1fr; }
       .controls{ justify-content:flex-start; }
-      .sigWrap{ order: 0; }
-      .title{ order: 1; }
     }
 
     .panel{
@@ -162,10 +126,7 @@
     .panel .hd .sub{ color: var(--muted); font-size: 12.5px; font-weight: 650; }
     #status { font-weight: 800; }
 
-    table{
-      width:100%;
-      border-collapse: collapse;
-    }
+    table{ width:100%; border-collapse: collapse; }
     th, td{
       border-bottom: 1px solid rgba(219,234,254,.75);
       padding: 12px 10px;
@@ -275,13 +236,9 @@
 <body>
   <div class="wrap">
     <header>
-      <div class="sigWrap">
-        <div class="sig" aria-label="Signature">Demi</div>
-      </div>
-
       <div class="title">
         <h1>TTD / TTR Calculator</h1>
-        <p class="subtitle">Three stages. Clock times in, durations out.</p>
+        <p class="subtitle"></p>
       </div>
 
       <div class="controls">
@@ -341,7 +298,6 @@
 (() => {
   "use strict";
 
-  /* ---------------- helpers ---------------- */
   const $ = (id) => document.getElementById(id);
 
   function clampInt(v) {
@@ -349,8 +305,6 @@
     return Number.isFinite(n) && n >= 0 ? n : 0;
   }
 
-  // If >= 1 hour: "H hours M minutes S seconds"
-  // Else: "M minutes S seconds"
   function formatHMS(totalSeconds) {
     const s0 = Math.max(0, Math.round(totalSeconds));
     const hours = Math.floor(s0 / 3600);
@@ -362,7 +316,6 @@
     return `${minutes} minutes ${seconds} seconds`;
   }
 
-  // Extract trailing HH:MM(:SS) from any pasted string (supports "2026-02-18 14:03:10")
   function parseClockToHMS(text) {
     const t = String(text || "").trim();
     if (!t) return null;
@@ -382,7 +335,6 @@
     return clampInt(h) * 3600 + clampInt(m) * 60 + clampInt(s);
   }
 
-  // If end < start and midnightHandling=true, assume next day. If false, return NaN so we can mark invalid.
   function diffClockSeconds(startSec, endSec, midnightHandling) {
     if (endSec >= startSec) return endSec - startSec;
     return midnightHandling ? (endSec + 86400) - startSec : NaN;
@@ -404,14 +356,12 @@
     toast._t = setTimeout(()=> el.style.display="none", 1500);
   }
 
-  /* ---------------- config ---------------- */
   const STAGES = [
     { key: "created",  label: "1) System created alert" },
     { key: "detected", label: "2) Time detected" },
     { key: "response", label: "3) Response" },
   ];
 
-  /* ---------------- state ---------------- */
   function newEvent(name) {
     return { name, t: {
       created:{h:0,m:0,s:0},
@@ -422,7 +372,6 @@
 
   let events = [ newEvent("Event 1") ];
 
-  /* ---------------- UI builders ---------------- */
   function makeTimeCell(ev, stageKey) {
     const wrap = document.createElement("div");
     wrap.className = "timeCell";
@@ -538,7 +487,6 @@
     $("status").textContent = "";
   }
 
-  /* ---------------- calculation ---------------- */
   function calculate() {
     const midnightHandling = $("midnight").checked;
 
@@ -642,7 +590,6 @@
       (errors.length ? ("\nInvalid rows:\n- " + errors.join("\n- ")) : "");
   }
 
-  /* ---------------- copy results ---------------- */
   async function copyResults() {
     const text = $("output").textContent || "";
     if (!text.trim() || text.includes("Run Calculate")) {
@@ -675,7 +622,6 @@
     toast("Cleared.");
   }
 
-  /* ---------------- wire up ---------------- */
   $("addRow").addEventListener("click", () => {
     const n = events.length + 1;
     events.push(newEvent(`Event ${n}`));
@@ -686,7 +632,6 @@
   $("copy").addEventListener("click", copyResults);
   $("clear").addEventListener("click", clearAll);
 
-  // init
   render();
 })();
 </script>
