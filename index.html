@@ -46,7 +46,8 @@
       min-width: 300px;
     }
     h1{ margin: 0 0 2px; font-size: 22px; letter-spacing: .2px; }
-    .subtitle{ margin:0; color:var(--muted); font-size: 13px; font-weight: 650; min-height: 18px; }
+    /* Keep a little vertical rhythm, but show nothing */
+    .subtitle{ margin:0; min-height: 18px; }
 
     .controls{
       display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:flex-end;
@@ -305,6 +306,7 @@
     return Number.isFinite(n) && n >= 0 ? n : 0;
   }
 
+  // >= 1 hour: "H hours M minutes S seconds", else: "M minutes S seconds"
   function formatHMS(totalSeconds) {
     const s0 = Math.max(0, Math.round(totalSeconds));
     const hours = Math.floor(s0 / 3600);
