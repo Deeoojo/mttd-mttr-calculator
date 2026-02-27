@@ -458,6 +458,7 @@
     return inp;
   }
 
+  // ✅ FIXED: don't re-render during paste; directly set the three boxes and update the model.
   function makeTimeCell(ev, stageKey) {
     const wrap = document.createElement("div");
     wrap.className = "timeCell";
@@ -465,16 +466,27 @@
 
     const h = makeNumericInput(v.h, "HH", 23,
       (val) => { ev.t[stageKey].h = val; },
-      (parsed) => { ev.t[stageKey] = parsed; render(); }
+      (parsed) => applyParsed(parsed)
     );
     const m = makeNumericInput(v.m, "MM", 59,
       (val) => { ev.t[stageKey].m = val; },
-      (parsed) => { ev.t[stageKey] = parsed; render(); }
+      (parsed) => applyParsed(parsed)
     );
     const s = makeNumericInput(v.s, "SS", 59,
       (val) => { ev.t[stageKey].s = val; },
-      (parsed) => { ev.t[stageKey] = parsed; render(); }
+      (parsed) => applyParsed(parsed)
     );
+
+    function applyParsed(parsed) {
+      // mutate (don’t replace) + update UI directly
+      ev.t[stageKey].h = parsed.h;
+      ev.t[stageKey].m = parsed.m;
+      ev.t[stageKey].s = parsed.s;
+
+      h.value = pad2(parsed.h);
+      m.value = pad2(parsed.m);
+      s.value = pad2(parsed.s);
+    }
 
     wrap.appendChild(h);
     wrap.appendChild(Object.assign(document.createElement("span"), {className:"sep", textContent:":"}));
