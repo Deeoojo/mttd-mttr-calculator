@@ -292,7 +292,7 @@
         <div class="hd">
           <div class="left">
             <div class="ttl">Events</div>
-            <div class="sub">Paste <b>HH:MM</b> or <b>HH:MM:SS</b> into any time box</div>
+            <div class="sub">Paste HH:MM or HH:MM:SS into any time box</div>
           </div>
           <div class="sub" id="status"></div>
         </div>
@@ -350,26 +350,40 @@
     return `${minutes} minutes ${seconds} seconds`;
   }
 
-  // Pull trailing HH:MM(:SS) from any pasted string
+  // Robust: find any HH:MM or HH:MM:SS in the pasted text, prefer the rightmost valid clock-time.
   function parseClockToHMS(text) {
     const t = String(text || "").trim();
     if (!t) return null;
-    const m = t.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?\s*$/);
-    if (!m) return null;
 
-    const h = clampInt(m[1]);
-    const mi = clampInt(m[2]);
-    const s = clampInt(m[3] ?? 0);
+    const matches = [...t.matchAll(/\b(\d{1,2}):(\d{2})(?::(\d{2}))?\b/g)];
+    if (!matches.length) return null;
 
-    if (h > 23 || mi > 59 || s > 59) return null;
-    return { h, m: mi, s };
+    for (let i = matches.length - 1; i >= 0; i--) {
+      const m = matches[i];
+      const hh = parseInt(m[1], 10);
+      const mm = parseInt(m[2], 10);
+      const ss = m[3] != null ? parseInt(m[3], 10) : 0;
+
+      if (!Number.isFinite(hh) || !Number.isFinite(mm) || !Number.isFinite(ss)) continue;
+      if (mm > 59 || ss > 59) continue;
+
+      // 3-part -> HH:MM:SS
+      if (m[3] != null) {
+        if (hh > 23) continue;
+        return { h: hh, m: mm, s: ss };
+      }
+
+      // 2-part -> HH:MM only if hh <= 23 (prevents MM:SS from being treated as clock-time)
+      if (hh <= 23) return { h: hh, m: mm, s: 0 };
+    }
+
+    return null;
   }
 
   function hmsToSec(h, m, s) {
     return clampInt(h) * 3600 + clampInt(m) * 60 + clampInt(s);
   }
 
-  // If end < start and midnightHandling=true, assume next day. If false, invalid.
   function diffClockSeconds(startSec, endSec, midnightHandling) {
     if (endSec >= startSec) return endSec - startSec;
     return midnightHandling ? (endSec + 86400) - startSec : NaN;
@@ -407,40 +421,38 @@
 
   let events = [ newEvent("Event 1") ];
 
-  function makeNumericTimeInput(initial, placeholder, max, onCommit, onPasteTime) {
+  function makeNumericInput(initial, placeholder, max, onCommit, onPasteClock) {
     const inp = document.createElement("input");
     inp.placeholder = placeholder;
     inp.value = pad2(initial);
     inp.inputMode = "numeric";
     inp.autocomplete = "off";
     inp.spellcheck = false;
-    inp.pattern = "\\d*"; // mobile keyboard hint
 
-    // Hard filter: strip everything not 0-9 as you type
+    // Hard strip non-digits as you type
     inp.addEventListener("input", () => {
       const digits = inp.value.replace(/[^\d]/g, "");
-      // allow empty while typing; commit on blur
       inp.value = digits;
       const n = digits === "" ? 0 : clampInt(digits);
-      onCommit(Math.min(max, n), false);
+      onCommit(Math.min(max, n));
     });
 
-    // pad + clamp on blur so it doesn't fight typing
+    // Pad on blur (so it doesn't fight typing)
     inp.addEventListener("blur", () => {
       const digits = inp.value.replace(/[^\d]/g, "");
       const n = digits === "" ? 0 : clampInt(digits);
       const v = Math.min(max, n);
-      onCommit(v, true);
+      onCommit(v);
       inp.value = pad2(v);
     });
 
-    // robust paste: if it's a clock string, parse and fill whole cell
+    // Paste: if it's a clock string, fill full HH/MM/SS
     inp.addEventListener("paste", (e) => {
       const pasted = (e.clipboardData || window.clipboardData).getData("text");
       const parsed = parseClockToHMS(pasted);
-      if (!parsed) return; // let default paste happen (digits only) — input handler will strip letters
+      if (!parsed) return; // allow default paste; input handler will strip to digits
       e.preventDefault();
-      onPasteTime(parsed);
+      onPasteClock(parsed);
     });
 
     return inp;
@@ -451,16 +463,16 @@
     wrap.className = "timeCell";
     const v = ev.t[stageKey];
 
-    const h = makeNumericTimeInput(v.h, "HH", 23,
-      (val, final) => { ev.t[stageKey].h = val; },
+    const h = makeNumericInput(v.h, "HH", 23,
+      (val) => { ev.t[stageKey].h = val; },
       (parsed) => { ev.t[stageKey] = parsed; render(); }
     );
-    const m = makeNumericTimeInput(v.m, "MM", 59,
-      (val, final) => { ev.t[stageKey].m = val; },
+    const m = makeNumericInput(v.m, "MM", 59,
+      (val) => { ev.t[stageKey].m = val; },
       (parsed) => { ev.t[stageKey] = parsed; render(); }
     );
-    const s = makeNumericTimeInput(v.s, "SS", 59,
-      (val, final) => { ev.t[stageKey].s = val; },
+    const s = makeNumericInput(v.s, "SS", 59,
+      (val) => { ev.t[stageKey].s = val; },
       (parsed) => { ev.t[stageKey] = parsed; render(); }
     );
 
@@ -530,11 +542,8 @@
     $("status").textContent = "";
   }
 
-  function validateTimeObj(t) {
-    // missing is allowed for "error handling" - we catch later
-    if (t.h > 23 || t.m > 59 || t.s > 59) return false;
-    if (t.h < 0 || t.m < 0 || t.s < 0) return false;
-    return true;
+  function validateRange(t){
+    return t.h >= 0 && t.h <= 23 && t.m >= 0 && t.m <= 59 && t.s >= 0 && t.s <= 59;
   }
 
   function calculate() {
@@ -549,9 +558,9 @@
       const name = (ev.name || `Event ${idx+1}`).trim() || `Event ${idx+1}`;
       const c = ev.t.created, d = ev.t.detected, r = ev.t.response;
 
-      if (!validateTimeObj(c) || !validateTimeObj(d) || !validateTimeObj(r)) {
-        errors.push(`${name}: invalid time value (HH 0–23, MM/SS 0–59)`);
-        lines.push(`${name}\n  ERROR: invalid time value (HH 0–23, MM/SS 0–59)\n`);
+      if (!validateRange(c) || !validateRange(d) || !validateRange(r)) {
+        errors.push(`${name}: invalid time (HH 0–23, MM/SS 0–59)`);
+        lines.push(`${name}\n  ERROR: invalid time (HH 0–23, MM/SS 0–59)\n`);
         return;
       }
 
