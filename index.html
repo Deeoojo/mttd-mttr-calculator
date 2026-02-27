@@ -59,7 +59,7 @@
       background: var(--card);
       cursor: pointer;
       box-shadow: 0 6px 16px rgba(2,6,23,.06);
-      font-weight: 700;
+      font-weight: 800;
     }
     button:hover{ transform: translateY(-1px); }
     button:active{ transform: translateY(0); }
@@ -89,14 +89,14 @@
       box-shadow: 0 6px 16px rgba(2,6,23,.06);
       color: var(--muted);
       font-size: 13px;
-      font-weight: 700;
+      font-weight: 800;
       user-select: none;
     }
     .toggle input{ transform: translateY(1px); }
 
     .grid{
       display:grid;
-      grid-template-columns: 1.2fr .95fr;
+      grid-template-columns: 1.05fr .95fr;
       gap: 14px;
       align-items:start;
     }
@@ -119,72 +119,91 @@
       border-bottom: 1px solid rgba(219,234,254,.9);
       background: linear-gradient(135deg, rgba(30,111,255,.10), rgba(30,111,255,.03));
     }
-    .panel .hd .left{
-      display:flex; flex-direction:column; gap:2px;
-    }
-    .panel .hd .ttl{ font-weight: 900; }
-    .panel .hd .sub{ color: var(--muted); font-size: 12.5px; font-weight: 650; }
-    #status { font-weight: 800; }
+    .panel .hd .left{ display:flex; flex-direction:column; gap:2px; }
+    .panel .hd .ttl{ font-weight: 950; }
+    .panel .hd .sub{ color: var(--muted); font-size: 12.5px; font-weight: 700; }
+    #status { font-weight: 900; }
 
-    table{ width:100%; border-collapse: collapse; }
-    th, td{
-      border-bottom: 1px solid rgba(219,234,254,.75);
-      padding: 12px 10px;
-      vertical-align: top;
+    /* ---- Event cards (horizontal stage rows) ---- */
+    .eventContainer{
+      padding: 14px;
+      display:flex;
+      flex-direction:column;
+      gap:16px;
     }
-    th{
-      text-align:left;
-      color: var(--muted);
-      font-size: 12.5px;
-      font-weight: 900;
-      background: rgba(255,255,255,.55);
-      position: sticky;
-      top: 0;
-      z-index: 1;
+    .eventCard{
+      background: rgba(255,255,255,.86);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 16px;
+      box-shadow: 0 10px 22px rgba(2,6,23,.06);
+      display:flex;
+      flex-direction:column;
+      gap:14px;
+      position: relative;
+      overflow:hidden;
     }
-    .eventName input{
-      width: 100%;
-      padding: 10px 10px;
+    .eventCard::before{
+      content:"";
+      position:absolute;
+      left:0; top:0; bottom:0;
+      width: 6px;
+      background: linear-gradient(180deg, var(--blue), var(--blue2));
+      opacity: .85;
+    }
+    .eventHeader{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:12px;
+      padding-left: 6px;
+    }
+    .eventTitle{
+      flex:1;
+      padding: 10px 12px;
       border-radius: 14px;
       border: 1px solid rgba(2,6,23,.12);
-      background: rgba(255,255,255,.9);
-      font-weight: 800;
+      font-weight: 900;
+      background: rgba(255,255,255,.92);
+    }
+
+    .stageRow{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:16px;
+      padding-left: 6px;
+    }
+    .stageLabel{
+      font-weight: 900;
+      color: var(--muted);
+      min-width: 230px;
     }
 
     .timeCell{
       display:flex;
       gap: 6px;
       align-items:center;
-      flex-wrap: wrap;
+      flex-wrap: nowrap;
     }
     .timeCell input{
-      width: 64px;
+      width: 70px;
       text-align:center;
       padding: 10px 8px;
       border-radius: 14px;
       border: 1px solid rgba(2,6,23,.12);
       background: rgba(255,255,255,.92);
-      font-weight: 800;
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
     }
     .sep{ color: rgba(71,85,105,.6); font-weight: 900; padding: 0 2px; }
 
     .removeBtn{
       padding: 9px 10px;
       border-radius: 14px;
-      background: rgba(255,255,255,.9);
+      background: rgba(255,255,255,.92);
+      font-weight: 900;
     }
-
-    .outBox{
-      padding: 12px 14px;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-      font-size: 13px;
-      line-height: 1.5;
-      white-space: pre-wrap;
-      color: var(--text);
-    }
-    .outEmpty{ color: rgba(71,85,105,.75); }
-    .bad{ color: var(--bad); font-weight: 900; }
-    .ok{ color: var(--ok); font-weight: 900; }
 
     .cards{
       display:grid;
@@ -205,7 +224,19 @@
     }
     .card .k{ color: var(--muted); font-size: 12.5px; font-weight: 900; }
     .card .v{ margin-top: 6px; font-size: 18px; font-weight: 950; }
-    .card .h{ margin-top: 6px; color: var(--muted); font-size: 12.5px; font-weight: 650; }
+    .card .h{ margin-top: 6px; color: var(--muted); font-size: 12.5px; font-weight: 700; }
+
+    .outBox{
+      padding: 12px 14px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 13px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      color: var(--text);
+    }
+    .outEmpty{ color: rgba(71,85,105,.75); }
+    .bad{ color: var(--bad); font-weight: 950; }
+    .ok{ color: var(--ok); font-weight: 950; }
 
     .footerDock{
       position: fixed;
@@ -229,7 +260,7 @@
       box-shadow: 0 10px 30px rgba(2,6,23,.25);
       display:none;
       z-index: 11;
-      font-weight: 700;
+      font-weight: 800;
     }
   </style>
 </head>
@@ -257,14 +288,12 @@
         <div class="hd">
           <div class="left">
             <div class="ttl">Events</div>
-            <div class="sub">Clock times per stage (HH:MM or HH:MM:SS)</div>
+            <div class="sub">Enter clock times (HH:MM or HH:MM:SS)</div>
           </div>
           <div class="sub" id="status"></div>
         </div>
 
-        <div style="overflow:auto;">
-          <table id="tbl"></table>
-        </div>
+        <div id="tbl" class="eventContainer"></div>
       </section>
 
       <aside class="panel">
@@ -322,6 +351,7 @@
     return `${minutes} minutes ${seconds} seconds`;
   }
 
+  // Extract trailing HH:MM(:SS) from any pasted string (supports "2026-02-18 14:03:10")
   function parseClockToHMS(text) {
     const t = String(text || "").trim();
     if (!t) return null;
@@ -341,6 +371,7 @@
     return clampInt(h) * 3600 + clampInt(m) * 60 + clampInt(s);
   }
 
+  // If end < start and midnightHandling=true, assume next day. If false, return NaN so we can mark invalid.
   function diffClockSeconds(startSec, endSec, midnightHandling) {
     if (endSec >= startSec) return endSec - startSec;
     return midnightHandling ? (endSec + 86400) - startSec : NaN;
@@ -363,9 +394,9 @@
   }
 
   const STAGES = [
-    { key: "created",  label: "1) System created alert" },
-    { key: "detected", label: "2) Time detected" },
-    { key: "response", label: "3) Response" },
+    { key: "created",  label: "System created alert time" },
+    { key: "detected", label: "Detection time" },
+    { key: "response", label: "Response time" },
   ];
 
   function newEvent(name) {
@@ -384,9 +415,9 @@
 
     const v = ev.t[stageKey];
 
-    const h = document.createElement("input"); h.placeholder = "HH"; h.value = pad2(v.h);
-    const m = document.createElement("input"); m.placeholder = "MM"; m.value = pad2(v.m);
-    const s = document.createElement("input"); s.placeholder = "SS"; s.value = pad2(v.s);
+    const h = document.createElement("input"); h.placeholder = "HH"; h.inputMode = "numeric"; h.value = pad2(v.h);
+    const m = document.createElement("input"); m.placeholder = "MM"; m.inputMode = "numeric"; m.value = pad2(v.m);
+    const s = document.createElement("input"); s.placeholder = "SS"; s.inputMode = "numeric"; s.value = pad2(v.s);
 
     function normalizeFromInputs() {
       ev.t[stageKey].h = Math.min(23, clampInt(h.value));
@@ -406,9 +437,16 @@
       render();
     }
 
-    h.addEventListener("input", normalizeFromInputs);
-    m.addEventListener("input", normalizeFromInputs);
-    s.addEventListener("input", normalizeFromInputs);
+    // Pad on blur so typing doesn't feel "fighty"
+    function onBlur(){ normalizeFromInputs(); }
+
+    h.addEventListener("input", () => ev.t[stageKey].h = Math.min(23, clampInt(h.value)));
+    m.addEventListener("input", () => ev.t[stageKey].m = Math.min(59, clampInt(m.value)));
+    s.addEventListener("input", () => ev.t[stageKey].s = Math.min(59, clampInt(s.value)));
+
+    h.addEventListener("blur", onBlur);
+    m.addEventListener("blur", onBlur);
+    s.addEventListener("blur", onBlur);
 
     h.addEventListener("paste", onPaste);
     m.addEventListener("paste", onPaste);
@@ -424,52 +462,25 @@
   }
 
   function render() {
-    const tbl = $("tbl");
-    tbl.innerHTML = "";
-
-    const thead = document.createElement("thead");
-    const trh = document.createElement("tr");
-
-    const th0 = document.createElement("th"); th0.textContent = "Event";
-    trh.appendChild(th0);
-
-    for (const st of STAGES) {
-      const th = document.createElement("th");
-      th.textContent = st.label;
-      trh.appendChild(th);
-    }
-
-    const thE = document.createElement("th"); thE.textContent = "";
-    trh.appendChild(thE);
-
-    thead.appendChild(trh);
-    tbl.appendChild(thead);
-
-    const tbody = document.createElement("tbody");
+    const container = $("tbl");
+    container.innerHTML = "";
 
     events.forEach((ev, idx) => {
-      const tr = document.createElement("tr");
+      const card = document.createElement("div");
+      card.className = "eventCard";
 
-      const tdName = document.createElement("td");
-      tdName.className = "eventName";
+      const header = document.createElement("div");
+      header.className = "eventHeader";
+
       const nameInput = document.createElement("input");
+      nameInput.className = "eventTitle";
       nameInput.value = ev.name || `Event ${idx+1}`;
       nameInput.addEventListener("change", () => {
         const v = nameInput.value.trim();
         ev.name = v || `Event ${idx+1}`;
         nameInput.value = ev.name;
       });
-      tdName.appendChild(nameInput);
-      tr.appendChild(tdName);
 
-      for (const st of STAGES) {
-        const td = document.createElement("td");
-        td.appendChild(makeTimeCell(ev, st.key));
-        tr.appendChild(td);
-      }
-
-      const tdDel = document.createElement("td");
-      tdDel.style.textAlign = "right";
       const del = document.createElement("button");
       del.className = "removeBtn";
       del.textContent = "Remove";
@@ -483,13 +494,27 @@
         });
         render();
       });
-      tdDel.appendChild(del);
-      tr.appendChild(tdDel);
 
-      tbody.appendChild(tr);
+      header.appendChild(nameInput);
+      header.appendChild(del);
+      card.appendChild(header);
+
+      STAGES.forEach(st => {
+        const row = document.createElement("div");
+        row.className = "stageRow";
+
+        const label = document.createElement("div");
+        label.className = "stageLabel";
+        label.textContent = st.label;
+
+        row.appendChild(label);
+        row.appendChild(makeTimeCell(ev, st.key));
+        card.appendChild(row);
+      });
+
+      container.appendChild(card);
     });
 
-    tbl.appendChild(tbody);
     $("status").textContent = "";
   }
 
